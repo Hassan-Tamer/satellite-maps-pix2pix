@@ -1,0 +1,16 @@
+dataset:
+  train_dir: 'maps/train/'
+  val_dir: 'maps/val/'
+  batch_size: 32
+  num_workers: 2
+
+model:
+  
+
+training:
+  num_epochs: 10
+  learning_rate: 0.0002
+  B1: 0.5
+  B2: 0.999
+  L1_lambda: 100
+  checkpoint_path: 'path/to/checkpoints'
