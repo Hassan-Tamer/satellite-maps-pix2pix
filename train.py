@@ -27,6 +27,7 @@ L1_lambda = config['training']['L1_lambda']
 transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,)),
+    transforms.RandomHorizontalFlip(),
     transforms.Resize((256, 256))
 ])
 
