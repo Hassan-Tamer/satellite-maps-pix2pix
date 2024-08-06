@@ -14,3 +14,6 @@ training:
   B2: 0.999
   L1_lambda: 100
   checkpoint_path: 'path/to/checkpoints'
+
+images:
+    save_dir: 'generated_images/'

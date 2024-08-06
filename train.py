@@ -6,6 +6,9 @@ import numpy as np
 from dataset import Maps
 import yaml
 from model import Generator, Discriminator
+import os
+from torchvision.utils import save_image
+
 
 with open('config.yaml', 'r') as f:
     config = yaml.safe_load(f)
@@ -23,7 +26,8 @@ L1_lambda = config['training']['L1_lambda']
 
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize((0.5,), (0.5,))
+    transforms.Normalize((0.5,), (0.5,)),
+    transforms.Resize((256, 256))
 ])
 
 map_train = Maps(train_dir, transform)
@@ -42,6 +46,9 @@ discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=lr,bet
 BCE_loss = nn.BCEWithLogitsLoss()
 L1_loss = nn.L1Loss()
 
+save_dir = config['images']['save_dir']
+os.makedirs(save_dir, exist_ok=True)
+
 for epoch in range(epochs):
     for i, (x,y) in enumerate(trainloader):
         x, y = x.to(device), y.to(device)
@@ -49,13 +56,13 @@ for epoch in range(epochs):
         discriminator_optimizer.zero_grad()
 
         # Train with real images
-        real_outputs = discriminator(x,y)
+        real_outputs = discriminator(x,y).to(device)
         real_labels = torch.ones_like(real_outputs, device=device)
         d_real_loss = BCE_loss(real_outputs, real_labels)
 
-        # Train with fake images        
+        # Train with fake images      
         fake_images = generator(x)
-        fake_outputs = discriminator(fake_images.detach())
+        fake_outputs = discriminator(fake_images.detach(),y)
         fake_labels = torch.zeros_like(fake_outputs, device=device)
         d_fake_loss = BCE_loss(fake_outputs, fake_labels)
 
@@ -64,8 +71,8 @@ for epoch in range(epochs):
         discriminator_optimizer.step()
         
         generator_optimizer.zero_grad()
-        gen_labels = torch.ones(batch_size, 1, device=device)
-        fake_outputs = discriminator(fake_images)
+        fake_outputs = discriminator(fake_images,y)
+        gen_labels = torch.ones_like(fake_outputs, device=device)
         g_loss_bce = BCE_loss(fake_outputs, gen_labels)
         l1_loss = L1_loss(fake_images, y)*L1_lambda
         g_loss = g_loss_bce + l1_loss
@@ -75,5 +82,11 @@ for epoch in range(epochs):
 
         # Print losses and log progress
         if i % 100 == 0:
-            print(f'Epoch [{epoch+1}/{epoch}], Step [{i+1}/{len(trainloader)}], '
+            print(f'Epoch [{epoch+1}/{epochs}], Step [{i+1}/{len(trainloader)}], '
                   f'D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}')
+            with torch.no_grad():
+                sample_images = fake_images.cpu()
+                save_image(sample_images, os.path.join(save_dir, f'epoch_{epoch+1}_step_{i+1}.png'), normalize=True)
+
+                # Optionally save real images as well for comparison
+                save_image(x.cpu(), os.path.join(save_dir, f'real_images_epoch_{epoch+1}_step_{i+1}.png'), normalize=True)
